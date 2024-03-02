@@ -112,14 +112,14 @@ class CarInterfaceBase(ABC):
   def get_params(cls, candidate: Platform, fingerprint: dict[int, dict[int, int]], car_fw: list[car.CarParams.CarFw], experimental_long: bool, docs: bool):
     ret = CarInterfaceBase.get_std_params(candidate)
 
-    if hasattr(candidate, "config"):
-      if candidate.config.specs is not None:
-        ret.mass = candidate.config.specs.mass
-        ret.wheelbase = candidate.config.specs.wheelbase
-        ret.steerRatio = candidate.config.specs.steerRatio
-        ret.centerToFront = ret.wheelbase * candidate.config.specs.centerToFrontRatio
-        ret.minEnableSpeed = candidate.config.specs.minEnableSpeed
-        ret.minSteerSpeed = candidate.config.specs.minSteerSpeed
+    ret.mass = candidate.config.specs.mass
+    ret.wheelbase = candidate.config.specs.wheelbase
+    ret.steerRatio = candidate.config.specs.steerRatio
+    ret.centerToFront = ret.wheelbase * candidate.config.specs.centerToFrontRatio
+    ret.minEnableSpeed = candidate.config.specs.minEnableSpeed
+    ret.minSteerSpeed = candidate.config.specs.minSteerSpeed
+    ret.tireStiffnessFactor = candidate.config.specs.tireStiffnessFactor
+    ret.flags |= int(candidate.config.flags)
 
     ret = cls._get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs)
 
@@ -135,7 +135,7 @@ class CarInterfaceBase(ABC):
 
   @staticmethod
   @abstractmethod
-  def _get_params(ret: car.CarParams, candidate: Platform, fingerprint: dict[int, dict[int, int]],
+  def _get_params(ret: car.CarParams, candidate, fingerprint: dict[int, dict[int, int]],
                   car_fw: list[car.CarParams.CarFw], experimental_long: bool, docs: bool):
     raise NotImplementedError
 
@@ -455,6 +455,15 @@ class CarStateBase(ABC):
     return None
 
 
+SendCan = tuple[int, int, bytes, int]
+
+
+class CarControllerBase(ABC):
+  @abstractmethod
+  def update(self, CC, CS, now_nanos) -> tuple[car.CarControl.Actuators, list[SendCan]]:
+    pass
+
+
 INTERFACE_ATTR_FILE = {
   "FINGERPRINTS": "fingerprints",
   "FW_VERSIONS": "fingerprints",
@@ -518,12 +527,3 @@ class NanoFFModel:
       pred = x[0]
     pred = pred * (self.weights['output_norm_mat'][1] - self.weights['output_norm_mat'][0]) + self.weights['output_norm_mat'][0]
     return pred
-
-
-SendCan = tuple[int, int, bytes, int]
-
-
-class CarControllerBase(ABC):
-  @abstractmethod
-  def update(self, CC, CS, now_nanos) -> tuple[car.CarControl.Actuators, list[SendCan]]:
-    pass
