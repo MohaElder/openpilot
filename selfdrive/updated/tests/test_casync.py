@@ -1,5 +1,6 @@
 import contextlib
 import http.server
+import os
 
 from asyncio import subprocess
 from unittest import mock
@@ -29,14 +30,18 @@ class TestUpdateDCASyncStrategy(BaseUpdateTest):
     super().setUp()
     self.casync_dir = self.mock_update_path / "casync"
     self.casync_dir.mkdir()
+    os.environ["UPDATER_STRATEGY"] = "casync"
 
   def update_remote_release(self, release):
     update_release(self.remote_dir, release, *self.MOCK_RELEASES[release])
-    create_casync_release(self.casync_dir, release, self.basedir)
+    create_casync_release(self.casync_dir, release, self.remote_dir)
 
   def setup_remote_release(self, release):
     self.update_remote_release(release)
-    create_casync_release(self.casync_dir, release, self.remote_dir)
+
+  def setup_basedir_release(self, release):
+    super().setup_basedir_release(release)
+    update_release(self.basedir, release, *self.MOCK_RELEASES[release])
 
   @contextlib.contextmanager
   def additional_context(self):

@@ -16,10 +16,7 @@ CHANNELS = {
   "master-ci": "master-ci",
 }
 
-CASYNC_PATH = os.path.join(STAGING_ROOT, "casync")
-
-
-CASYNC_CHANNEL_FILE = "casync_channel.txt"
+CASYNC_PATH = Path(STAGING_ROOT) / "casync"
 
 
 class CASyncUpdateStrategy(UpdateStrategy):
@@ -42,19 +39,19 @@ class CASyncUpdateStrategy(UpdateStrategy):
 
   def current_channel(self) -> str:
     try:
-      with open(Path(BASEDIR) / CASYNC_CHANNEL_FILE) as f:
-        return f.read().strip()
-    except Exception:
-      cloudlog.exception("casync.current_channel")
-
-    try:
       return GitUpdateStrategy.get_branch(BASEDIR)
     except Exception:
       cloudlog.exception("casync.current_channel git")
 
-    return "unknown"
+    return self.target_channel
 
   def update_available(self) -> bool:
+    if CASYNC_PATH.exists() and next(CASYNC_PATH.glob("*"), None) is not None:
+      digest_local = self.get_digest_local(CASYNC_PATH)
+      digest_remote = self.get_digest_remote(self.target_channel)
+
+      return digest_local != digest_remote
+
     digest_local = self.get_digest_local(BASEDIR)
     digest_remote = self.get_digest_remote(self.target_channel)
 
@@ -81,7 +78,9 @@ class CASyncUpdateStrategy(UpdateStrategy):
     return self.describe_channel(BASEDIR), self.release_notes(BASEDIR)
 
   def describe_ready_channel(self) -> tuple[str, str]:
-    return self.describe_channel(FINALIZED), self.release_notes(FINALIZED)
+    if self.update_ready():
+      return self.describe_channel(FINALIZED), self.release_notes(FINALIZED)
+    return "", ""
 
   def fetch_update(self) -> None:
     cloudlog.info("attempting a casync update inside staging path")
@@ -93,9 +92,6 @@ class CASyncUpdateStrategy(UpdateStrategy):
     return False
 
   def finalize_update(self) -> None:
-    """Take the current OverlayFS merged view and finalize a copy outside of
-    OverlayFS, ready to be swapped-in at BASEDIR. Copy using shutil.copytree"""
-
     # Remove the update ready flag and any old updates
     cloudlog.info("creating finalized version of the overlay")
     set_consistent_flag(False)
@@ -104,9 +100,6 @@ class CASyncUpdateStrategy(UpdateStrategy):
     if os.path.exists(FINALIZED):
       shutil.rmtree(FINALIZED)
     shutil.copytree(CASYNC_PATH, FINALIZED, symlinks=True)
-
-    with open(Path(FINALIZED) / CASYNC_CHANNEL_FILE) as f:
-      f.write(self.target_channel)
 
     set_consistent_flag(True)
     cloudlog.info("done finalizing overlay")

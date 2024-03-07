@@ -1,6 +1,5 @@
 import os
 import pathlib
-import shutil
 import signal
 import subprocess
 import tempfile

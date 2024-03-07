@@ -12,8 +12,12 @@ from typing import List
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.updated.common import FINALIZED, OVERLAY_MERGED, OVERLAY_METADATA, OVERLAY_UPPER, OVERLAY_INIT, STAGING_ROOT, \
-                                              UpdateStrategy, parse_release_notes, set_consistent_flag, run
+from openpilot.selfdrive.updated.common import FINALIZED, STAGING_ROOT, UpdateStrategy, parse_release_notes, set_consistent_flag, run
+
+OVERLAY_INIT = Path(os.path.join(BASEDIR, ".overlay_init"))
+OVERLAY_UPPER = os.path.join(STAGING_ROOT, "upper")
+OVERLAY_METADATA = os.path.join(STAGING_ROOT, "metadata")
+OVERLAY_MERGED = os.path.join(STAGING_ROOT, "merged")
 
 
 def setup_git_options(cwd: str) -> None:
@@ -131,7 +135,8 @@ class GitUpdateStrategy(UpdateStrategy):
       return hash_mismatch or branch_mismatch
     return False
 
-  def get_branch(self, path: str) -> str:
+  @classmethod
+  def get_branch(cls, path: str) -> str:
     return run(["git", "rev-parse", "--abbrev-ref", "HEAD"], path).rstrip()
 
   def get_commit_hash(self, path) -> str:
