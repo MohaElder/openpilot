@@ -1,8 +1,9 @@
+import contextlib
 import http.server
 
 from asyncio import subprocess
-import contextlib
 from unittest import mock
+
 from openpilot.selfdrive.test.helpers import http_server_context
 from openpilot.selfdrive.updated.tests.test_base import BaseUpdateTest, run, update_release
 
@@ -17,10 +18,10 @@ def DirectoryHttpServer(directory):
 def create_casync_release(casync_dir, release, remote_dir):
   run(["casync", "make", casync_dir / f"{release}.caidx", remote_dir])
 
-  hash = run(["casync", "digest", "--without=all", remote_dir], stdout=subprocess.PIPE).stdout.decode().strip()
+  digest = run(["casync", "digest", "--without=all", remote_dir], stdout=subprocess.PIPE).stdout.decode().strip()
 
   with open(casync_dir / f"{release}.digest", "w") as f:
-    f.write(hash)
+    f.write(digest)
 
 
 class TestUpdateDCASyncStrategy(BaseUpdateTest):
