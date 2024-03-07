@@ -7,18 +7,12 @@ from typing import List
 
 from markdown_it import MarkdownIt
 from openpilot.common.params import Params
-from openpilot.common.basedir import BASEDIR
 from openpilot.common.swaglog import cloudlog
 
 
 LOCK_FILE = os.getenv("UPDATER_LOCK_FILE", "/tmp/safe_staging_overlay.lock")
 STAGING_ROOT = os.getenv("UPDATER_STAGING_ROOT", "/data/safe_staging")
-OVERLAY_UPPER = os.path.join(STAGING_ROOT, "upper")
-OVERLAY_METADATA = os.path.join(STAGING_ROOT, "metadata")
-OVERLAY_MERGED = os.path.join(STAGING_ROOT, "merged")
 FINALIZED = os.path.join(STAGING_ROOT, "finalized")
-
-OVERLAY_INIT = Path(os.path.join(BASEDIR, ".overlay_init"))
 
 
 def run(cmd: list[str], cwd: str = None) -> str:
@@ -28,6 +22,10 @@ def run(cmd: list[str], cwd: str = None) -> str:
 class UpdateStrategy(abc.ABC):
   def __init__(self):
     self.params = Params()
+
+  @abc.abstractmethod
+  def init(self):
+    pass
 
   @abc.abstractmethod
   def get_available_channels(self) -> List[str]:
@@ -69,6 +67,10 @@ class UpdateStrategy(abc.ABC):
   def finalize_update(self) -> None:
     pass
 
+  @abc.abstractmethod
+  def cleanup(self) -> None:
+    pass
+
 
 def set_consistent_flag(consistent: bool) -> None:
   os.sync()
@@ -78,6 +80,10 @@ def set_consistent_flag(consistent: bool) -> None:
   elif not consistent:
     consistent_file.unlink(missing_ok=True)
   os.sync()
+
+def get_consistent_flag() -> bool:
+  consistent_file = Path(os.path.join(FINALIZED, ".overlay_consistent"))
+  return consistent_file.is_file()
 
 
 def parse_release_notes(releases_md: str) -> str:
@@ -92,3 +98,12 @@ def parse_release_notes(releases_md: str) -> str:
   except Exception:
     cloudlog.exception("failed to parse release notes")
   return ""
+
+
+def get_version(path) -> str:
+  with open(os.path.join(path, "common", "version.h")) as f:
+    return f.read().split('"')[1]
+
+def get_release_notes(path) -> str:
+  with open(os.path.join(path, "RELEASES.md"), "r") as f:
+    return parse_release_notes(f.read())

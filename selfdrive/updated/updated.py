@@ -10,12 +10,13 @@ import threading
 
 from openpilot.common.params import Params
 from openpilot.common.time import system_time_valid
-from openpilot.selfdrive.updated.common import LOCK_FILE, OVERLAY_INIT, STAGING_ROOT, UpdateStrategy, run, set_consistent_flag, OVERLAY_MERGED
+from openpilot.selfdrive.updated.casync import CASyncUpdateStrategy
+from openpilot.selfdrive.updated.common import LOCK_FILE, STAGING_ROOT, UpdateStrategy, run, set_consistent_flag
 from openpilot.system.hardware import AGNOS, HARDWARE
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.alertmanager import set_offroad_alert
 from openpilot.system.version import is_tested_branch
-from openpilot.selfdrive.updated.git import GitUpdateStrategy, init_overlay
+from openpilot.selfdrive.updated.git import OVERLAY_MERGED, GitUpdateStrategy
 
 DAYS_NO_CONNECTIVITY_MAX = 14     # do not allow to engage after this many days
 DAYS_NO_CONNECTIVITY_PROMPT = 10  # send an offroad prompt after this many days
@@ -83,6 +84,7 @@ def handle_agnos_update() -> None:
 
 STRATEGY = {
   "git": GitUpdateStrategy,
+  "casync": CASyncUpdateStrategy
 }
 
 
@@ -96,6 +98,9 @@ class Updater:
   @property
   def has_internet(self) -> bool:
     return self._has_internet
+
+  def init(self):
+    self.strategy.init()
 
   def set_params(self, update_success: bool, failed_count: int, exception: str | None) -> None:
     self.params.put("UpdateFailedCount", str(failed_count))
@@ -169,6 +174,9 @@ class Updater:
     self.strategy.finalize_update()
     cloudlog.info("finalize success!")
 
+  def cleanup(self) -> None:
+    self.strategy.cleanup()
+
 
 def main() -> None:
   params = Params()
@@ -214,8 +222,7 @@ def main() -> None:
       # Attempt an update
       exception = None
       try:
-        # TODO: reuse overlay from previous updated instance if it looks clean
-        init_overlay()
+        updater.init()
 
         # ensure we have some params written soon after startup
         updater.set_params(False, update_failed_count, exception)
@@ -251,11 +258,11 @@ def main() -> None:
           returncode=e.returncode
         )
         exception = f"command failed: {e.cmd}\n{e.output}"
-        OVERLAY_INIT.unlink(missing_ok=True)
+        updater.cleanup()
       except Exception as e:
         cloudlog.exception("uncaught updated exception, shouldn't happen")
         exception = str(e)
-        OVERLAY_INIT.unlink(missing_ok=True)
+        updater.cleanup()
 
       try:
         params.put("UpdaterState", "idle")
