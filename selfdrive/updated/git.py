@@ -14,10 +14,11 @@ from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.updated.common import FINALIZED, STAGING_ROOT, UpdateStrategy, parse_release_notes, set_consistent_flag, run
 
-OVERLAY_INIT = Path(os.path.join(BASEDIR, ".overlay_init"))
+
 OVERLAY_UPPER = os.path.join(STAGING_ROOT, "upper")
 OVERLAY_METADATA = os.path.join(STAGING_ROOT, "metadata")
 OVERLAY_MERGED = os.path.join(STAGING_ROOT, "merged")
+OVERLAY_INIT = Path(os.path.join(BASEDIR, ".overlay_init"))
 
 
 def setup_git_options(cwd: str) -> None:
@@ -100,12 +101,11 @@ def init_overlay() -> None:
 
 
 class GitUpdateStrategy(UpdateStrategy):
-  def init(self):
+  def init(self) -> None:
     init_overlay()
 
-  def cleanup(self):
-    dismount_overlay()
-    shutil.rmtree(STAGING_ROOT)
+  def cleanup(self) -> None:
+    OVERLAY_INIT.unlink(missing_ok=True)
 
   def sync_branches(self):
     excluded_branches = ('release2', 'release2-staging')
@@ -191,8 +191,6 @@ class GitUpdateStrategy(UpdateStrategy):
   def fetch_update(self):
     cloudlog.info("attempting git fetch inside staging overlay")
 
-    # TODO: cleanly interrupt this and invalidate old update
-    set_consistent_flag(False)
     setup_git_options(OVERLAY_MERGED)
 
     branch = self.target_channel
@@ -210,6 +208,9 @@ class GitUpdateStrategy(UpdateStrategy):
     ]
     r = [run(cmd, OVERLAY_MERGED) for cmd in cmds]
     cloudlog.info("git reset success: %s", '\n'.join(r))
+
+  def fetched_path(self):
+    return str(OVERLAY_MERGED)
 
   def finalize_update(self) -> None:
     """Take the current OverlayFS merged view and finalize a copy outside of

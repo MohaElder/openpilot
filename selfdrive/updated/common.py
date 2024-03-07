@@ -24,7 +24,11 @@ class UpdateStrategy(abc.ABC):
     self.params = Params()
 
   @abc.abstractmethod
-  def init(self):
+  def init(self) -> None:
+    pass
+
+  @abc.abstractmethod
+  def cleanup(self) -> None:
     pass
 
   @abc.abstractmethod
@@ -34,6 +38,10 @@ class UpdateStrategy(abc.ABC):
   @abc.abstractmethod
   def current_channel(self) -> str:
     """Current channel installed"""
+
+  @abc.abstractmethod
+  def fetched_path(self) -> str:
+    """Path to the fetched update"""
 
   @property
   def target_channel(self) -> str:
@@ -65,10 +73,6 @@ class UpdateStrategy(abc.ABC):
 
   @abc.abstractmethod
   def finalize_update(self) -> None:
-    pass
-
-  @abc.abstractmethod
-  def cleanup(self) -> None:
     pass
 
 

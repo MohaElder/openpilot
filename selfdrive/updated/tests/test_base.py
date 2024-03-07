@@ -186,10 +186,11 @@ class BaseUpdateTest(unittest.TestCase):
     self.setup_remote_release("release3")
     self.setup_basedir_release("release3")
 
-    with mock.patch("openpilot.system.hardware.AGNOS", "True"), \
-         mock.patch("openpilot.system.hardware.tici.hardware.Tici.get_os_version", "1.2"), \
-         mock.patch("openpilot.system.hardware.tici.agnos.get_target_slot_number"), \
-         mock.patch("openpilot.system.hardware.tici.agnos.flash_agnos_update"), \
+    with self.additional_context(), \
+        mock.patch("openpilot.system.hardware.AGNOS", "True"), \
+        mock.patch("openpilot.system.hardware.tici.hardware.Tici.get_os_version", "1.2"), \
+        mock.patch("openpilot.system.hardware.tici.agnos.get_target_slot_number"), \
+        mock.patch("openpilot.system.hardware.tici.agnos.flash_agnos_update"), \
           processes_context(["updated"]) as [updated]:
 
       self._test_params("release3", False, False)
@@ -211,7 +212,3 @@ class BaseUpdateTest(unittest.TestCase):
 
       self._test_params("release3", False, True)
       self._test_update_params("release3", *self.MOCK_RELEASES["release3"])
-
-
-if __name__ == "__main__":
-  unittest.main()
