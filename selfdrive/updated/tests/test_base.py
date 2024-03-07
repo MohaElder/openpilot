@@ -83,9 +83,12 @@ class BaseUpdateTest(unittest.TestCase):
 
   def tearDown(self):
     mock.patch.stopall()
-    run(["sudo", "umount", "-l", str(self.staging_root / "merged")])
-    run(["sudo", "umount", "-l", self.tmpdir])
-    shutil.rmtree(self.tmpdir)
+    try:
+      run(["sudo", "umount", "-l", str(self.staging_root / "merged")])
+      run(["sudo", "umount", "-l", self.tmpdir])
+    except:
+      pass
+    #shutil.rmtree(self.tmpdir)
 
   def send_check_for_updates_signal(self, updated: ManagerProcess):
     updated.signal(signal.SIGUSR1.value)

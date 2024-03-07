@@ -35,7 +35,7 @@ class CASyncUpdateStrategy(UpdateStrategy):
     return list(CHANNELS.keys())
 
   def get_digest_local(self, path: str) -> str:
-    return run(["casync", "digest", path]).strip()
+    return run(["casync", "digest", "--without=all", path]).strip()
 
   def get_digest_remote(self, channel: str) -> str:
     return requests.get(f"{CHANNEL_PATH}/{channel}.digest").text.strip()
