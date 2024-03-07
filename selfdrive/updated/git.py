@@ -100,6 +100,12 @@ def init_overlay() -> None:
 
 
 class GitUpdateStrategy(UpdateStrategy):
+  def init(self):
+    init_overlay()
+
+  def cleanup(self):
+    dismount_overlay()
+    shutil.rmtree(STAGING_ROOT)
 
   def sync_branches(self):
     excluded_branches = ('release2', 'release2-staging')

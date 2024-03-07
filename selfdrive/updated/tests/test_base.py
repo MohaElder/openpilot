@@ -31,12 +31,10 @@ def update_release(directory, name, version, release_notes):
 
 @pytest.mark.slow # TODO: can we test overlayfs in GHA?
 class BaseUpdateTest(unittest.TestCase):
-  @classmethod
-  def setUpClass(cls):
-    if "Base" in cls.__name__:
-      raise unittest.SkipTest
-
   def setUp(self):
+    if "Base" in self.__class__.__name__:
+      raise unittest.SkipTest("base class")
+
     self.tmpdir = tempfile.mkdtemp()
 
     run(["sudo", "mount", "-t", "tmpfs", "tmpfs", self.tmpdir]) # overlayfs doesn't work inside of docker unless this is a tmpfs
@@ -82,12 +80,6 @@ class BaseUpdateTest(unittest.TestCase):
 
   def tearDown(self):
     mock.patch.stopall()
-    try:
-      run(["sudo", "umount", "-l", str(self.staging_root / "merged")])
-      run(["sudo", "umount", "-l", self.tmpdir])
-    except:
-      pass
-    #shutil.rmtree(self.tmpdir)
 
   def send_check_for_updates_signal(self, updated: ManagerProcess):
     updated.signal(signal.SIGUSR1.value)

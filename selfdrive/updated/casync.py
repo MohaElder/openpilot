@@ -45,17 +45,18 @@ class CASyncUpdateStrategy(UpdateStrategy):
 
     return self.target_channel
 
+  def update_ready(self) -> bool:
+    if get_consistent_flag():
+      return self.get_digest_local(FINALIZED) != self.get_digest_local(BASEDIR)
+    return False
+
   def update_available(self) -> bool:
-    if CASYNC_PATH.exists() and next(CASYNC_PATH.glob("*"), None) is not None:
-      digest_local = self.get_digest_local(CASYNC_PATH)
-      digest_remote = self.get_digest_remote(self.target_channel)
+    remote_digest = self.get_digest_remote(self.target_channel)
 
-      return digest_local != digest_remote
+    if CASYNC_PATH.exists() and len(list(CASYNC_PATH.rglob("*"))) > 1:
+      return self.get_digest_local(str(CASYNC_PATH)) != remote_digest
 
-    digest_local = self.get_digest_local(BASEDIR)
-    digest_remote = self.get_digest_remote(self.target_channel)
-
-    return digest_local != digest_remote
+    return self.get_digest_local(str(BASEDIR)) != remote_digest
 
   def describe_channel(self, path):
     version = ""
@@ -84,12 +85,7 @@ class CASyncUpdateStrategy(UpdateStrategy):
 
   def fetch_update(self) -> None:
     cloudlog.info("attempting a casync update inside staging path")
-    run(["casync", "extract", f"{CHANNEL_PATH}/{self.target_channel}.caidx", CASYNC_PATH , f"--seed={BASEDIR}"])
-
-  def update_ready(self) -> bool:
-    if get_consistent_flag():
-      return self.get_digest_local(FINALIZED) == self.get_digest_remote(self.target_channel)
-    return False
+    run(["casync", "extract", f"{CHANNEL_PATH}/{self.target_channel}.caidx", str(CASYNC_PATH) , f"--seed={BASEDIR}"])
 
   def finalize_update(self) -> None:
     # Remove the update ready flag and any old updates

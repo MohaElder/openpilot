@@ -3,6 +3,7 @@ import http.server
 import os
 
 from asyncio import subprocess
+import pathlib
 from unittest import mock
 
 from openpilot.selfdrive.test.helpers import http_server_context
@@ -15,6 +16,12 @@ def DirectoryHttpServer(directory):
       super().__init__(*args, directory=directory, **kwargs)
 
   return Handler
+
+
+def create_caexclude(dirname):
+  with open(pathlib.Path(dirname) / ".caexclude", "w") as f:
+    f.write(".overlay_consistent\n")
+
 
 def create_casync_release(casync_dir, release, remote_dir):
   run(["casync", "make", casync_dir / f"{release}.caidx", remote_dir])
@@ -34,6 +41,7 @@ class TestUpdateDCASyncStrategy(BaseUpdateTest):
 
   def update_remote_release(self, release):
     update_release(self.remote_dir, release, *self.MOCK_RELEASES[release])
+    create_caexclude(self.remote_dir)
     create_casync_release(self.casync_dir, release, self.remote_dir)
 
   def setup_remote_release(self, release):
@@ -42,6 +50,7 @@ class TestUpdateDCASyncStrategy(BaseUpdateTest):
   def setup_basedir_release(self, release):
     super().setup_basedir_release(release)
     update_release(self.basedir, release, *self.MOCK_RELEASES[release])
+    create_caexclude(self.basedir)
 
   @contextlib.contextmanager
   def additional_context(self):
